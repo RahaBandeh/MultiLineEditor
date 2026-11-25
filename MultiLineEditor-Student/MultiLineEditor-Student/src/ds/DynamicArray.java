@@ -7,16 +7,16 @@ import java.util.NoSuchElementException;
  * Index-based list on a dynamic array.
  *
  * Rules (checked by SelfCheck):
- *  - a new list has capacity MIN_CAPACITY (4);
- *  - when an element is added to a full array, the capacity doubles;
- *  - after a removal, if size <= capacity / 4 and capacity > MIN_CAPACITY,
- *    the capacity is halved (it never goes below MIN_CAPACITY).
+ * - a new list has capacity MIN_CAPACITY (4);
+ * - when an element is added to a full array, the capacity doubles;
+ * - after a removal, if size <= capacity / 4 and capacity > MIN_CAPACITY,
+ * the capacity is halved (it never goes below MIN_CAPACITY).
  */
 public class DynamicArray<E> implements IndexList<E> {
 
     public static final int MIN_CAPACITY = 4;
 
-    private E[] data;   // data[0 .. size-1] hold the elements
+    private E[] data; // data[0 .. size-1] hold the elements
     private int size;
 
     @SuppressWarnings("unchecked")
@@ -42,39 +42,68 @@ public class DynamicArray<E> implements IndexList<E> {
 
     @Override
     public E get(int i) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        checkIndex(i, size);
+        return data[i];
     }
 
     @Override
     public E set(int i, E e) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        checkIndex(i, size);
+        E cellValue = data[i];
+        data[i] = e;
+        return cellValue;
     }
 
     @Override
-    public void add(int i, E e) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+    public void add(int index, E e) {
+        checkIndex(index, size + 1);
+
+        if (size == data.length) {
+            resize(data.length * 2);
+
+        }
+        for (int i = size - 1; i >= index; i--) {
+            data[i + 1] = data[i];
+        }
+        data[index] = e;
+        size++;
     }
 
     @Override
     public void addLast(E e) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (size == data.length) {
+            resize(data.length * 2);
+        }
+        data[size] = e;
+        size++;
     }
 
     @Override
-    public E remove(int i) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+    public E remove(int index) {
+        checkIndex(index, size);
+        E cellData = data[index];
+
+        for (int i = index; i < size - 1; i++) {
+            data[i] = data[i + 1];
+        }
+        data[size - 1] = null;
+        size--;
+
+        if (size <= data.length / 4 && data.length > 4) {
+            resize(data.length / 2);
+        }
+        return cellData;
     }
 
     /** Moves the elements to a new array of the given length. */
     @SuppressWarnings("unchecked")
     private void resize(int newCapacity) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        E[] newData = (E[]) new Object[newCapacity];
+
+        for (int i = 0; i < size; i++) {
+            newData[i] = data[i];
+        }
+        data = newData;
     }
 
     /** Throws IndexOutOfBoundsException unless 0 <= i < n. */
@@ -87,31 +116,44 @@ public class DynamicArray<E> implements IndexList<E> {
     /** Iterates from index 0 to size()-1. */
     @Override
     public Iterator<E> iterator() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        return new ArrayIterator();
     }
 
     /** remove() deletes the element returned by the last call to next(). */
     private class ArrayIterator implements Iterator<E> {
-        private int next = 0;              // index of the element next() will return
+        private int next = 0; // index of the element next() will return
         private boolean canRemove = false; // true right after next()
 
         @Override
         public boolean hasNext() {
-            // TODO
-            throw new UnsupportedOperationException("not implemented yet");
+            return next != size() - 1; // checkout TODO
         }
 
         @Override
         public E next() {
-            // TODO
-            throw new UnsupportedOperationException("not implemented yet");
+            if (!hasNext())
+                return null;
+            E value = data[next]; // TODO check
+            next++;
+            canRemove = true;
+            return value;
+
         }
 
         @Override
         public void remove() {
-            // TODO
-            throw new UnsupportedOperationException("not implemented yet");
+            if (!canRemove)
+                return;
+            next--;
+            DynamicArray.this.remove(next);
+
+            data[size - 1] = null;
+            size--;
+
+            if (size <= data.length / 4) {
+                resize(data.length / 2);
+            }
+
         }
     }
 }
