@@ -135,18 +135,20 @@ public class TextEditor implements Editor {
     @Override
     public void moveUp() {
         if (curLine > 0) {
+            int column = cursorColumn();
             curLine--;
-            placeAtColumn(cursorColumn());
+            placeAtColumn(column);
         }
     }
 
     @Override
-    public void moveDown() {
-        if (curLine < lines.size() - 1) {
-            curLine++;
-            placeAtColumn(cursorColumn());
-        }
+    public void moveDown() { //
+    if (curLine < lines.size() - 1) {
+        int column = cursorColumn();
+        curLine++;
+        placeAtColumn(column);
     }
+}
 
     @Override
     public void moveHome() {
@@ -174,7 +176,7 @@ public class TextEditor implements Editor {
     }
 
     /** Puts the cursor at column col of this line (at its end if the line is shorter). */
-    private void placeAtColumn(int col) {
+    private void placeAtColumn(int col) { 
         if (col <= 0) {
             left = null;
             return;
