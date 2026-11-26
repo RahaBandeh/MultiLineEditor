@@ -51,205 +51,443 @@ public class TextEditor implements Editor {
 
     @Override
     public int lineCount() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        return lines.size();
     }
 
-    @Override
+    @Override //shows the number of lines we can have
     public int lineCapacity() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        return lines.capacity();
     }
 
     @Override
     public String lineText(int i) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        StringBuilder currentLine = new  StringBuilder();
+        for (Character c : lines.get(i)) {
+            currentLine.append(c);
+        }
+        return currentLine.toString();
     }
 
     @Override
     public int lineLength(int i) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        return lines.get(i).size();
     }
 
     @Override
     public int cursorLine() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        return curLine;
     }
 
     @Override
     public int cursorColumn() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (left == null)
+            return 0;
+
+        int count = 0;
+        Position<Character> current = line().first();
+
+        while (current != left) {
+            count++;
+            current = line().after(current);
+        }
+
+        return count + 1;
     }
 
     // ------------------------------------------------------------ moving the cursor
 
     @Override
     public void moveLeft() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (left == null) {
+            if (curLine > 0) {
+                curLine--;
+                left = lines.get(curLine).last();
+            }
+        } 
+        else {
+            left = line().before(left);
+        }
     }
 
     @Override
     public void moveRight() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (left == null) {
+            if (!line().isEmpty()) {
+                left = line().first();
+            } 
+            else if (curLine < lines.size() - 1) {
+                curLine++;
+                left = null;
+            }
+        } 
+        else {
+            Position<Character> next = line().after(left);
+            if (next != null) {
+                left = next;
+            } 
+            else if (curLine < lines.size() - 1) {
+                curLine++;
+                left = null;
+            }
+        }
     }
 
     @Override
     public void moveUp() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (curLine > 0) {
+            curLine--;
+            placeAtColumn(cursorColumn());
+        }
     }
 
     @Override
     public void moveDown() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (curLine < lines.size() - 1) {
+            curLine++;
+            placeAtColumn(cursorColumn());
+        }
     }
 
     @Override
     public void moveHome() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        curLine = 0;
+        left = null;
     }
 
     @Override
     public void moveEnd() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        curLine = lines.size() - 1;
+        left = lines.get(curLine).last();
     }
 
     @Override
     public void moveTo(int line, int column) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (line < 0) {
+            curLine = 0;
+        } else if (line >= lines.size()) {
+            curLine = lines.size() - 1;
+        } else {
+            curLine = line;
+        }
+
+        placeAtColumn(column);
     }
 
     /** Puts the cursor at column col of this line (at its end if the line is shorter). */
     private void placeAtColumn(int col) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (col <= 0) {
+            left = null;
+            return;
+        } 
+        if (col > line().size()) {
+            left = line().last();
+            return;
+        }
+        Position<Character> current = line().first();
+        int count = 1;
+
+        while (count < col) {
+            current = line().after(current);
+            count++;
+        }
+
+        left = line().before(current);
+        
     }
 
     // ------------------------------------------------------------ editing
 
     @Override
     public void insertChar(char c) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (c == '\n') {
+            newLine();
+        } else {
+            if (left == null) {
+                left = line().addFirst(c);
+            } else {
+                left = line().addAfter(left, c);
+            }
+        }
     }
 
     @Override
     public void newLine() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        PositionalList<Character> currentLine = line();
+        PositionalList<Character> newLine = new LinkedPositionalList<>();
+
+        if (left != null) {
+            Position<Character> next = currentLine.after(left);
+            while (next != null) {
+                newLine.addLast(next.getElement());
+                next = currentLine.after(next);
+            }
+
+            while (currentLine.size() > 0 && currentLine.after(left) != null) {
+                currentLine.remove(currentLine.after(left));
+            }
+        }
+
+        lines.add(curLine + 1, newLine);
+        curLine++;
+        left = null;
     }
 
     @Override
     public void backspace() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (left == null) {
+            if (curLine > 0) {
+                PositionalList<Character> currentLine = line();
+                PositionalList<Character> previousLine = lines.get(curLine - 1);
+                Position<Character> lastCharPrevLine = previousLine.last();
+
+                while (!currentLine.isEmpty()) {
+                    previousLine.addLast(currentLine.first().getElement());
+                    currentLine.remove(currentLine.first());
+                }
+
+                lines.remove(curLine);
+                curLine--;
+                left = lastCharPrevLine;
+            }
+        } else {
+            Position<Character> charToRemove = left;
+            left = line().before(left);
+            line().remove(charToRemove);
+        }
     }
 
     @Override
     public void delete() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        if (left == null) {
+            if (!line().isEmpty()) {
+                Position<Character> charToRemove = line().first();
+                line().remove(charToRemove);
+            } else if (curLine < lines.size() - 1) {
+                PositionalList<Character> currentLine = line();
+                PositionalList<Character> nextLine = lines.get(curLine + 1);
+
+                while (!nextLine.isEmpty()) {
+                    currentLine.addLast(nextLine.first().getElement());
+                    nextLine.remove(nextLine.first());
+                }
+
+                lines.remove(curLine + 1);
+            }
+        } else {
+            Position<Character> charToRemove = line().after(left);
+            if (charToRemove != null) {
+                line().remove(charToRemove);
+            } else if (curLine < lines.size() - 1) {
+                PositionalList<Character> currentLine = line();
+                PositionalList<Character> nextLine = lines.get(curLine + 1);
+
+                while (!nextLine.isEmpty()) {
+                    currentLine.addLast(nextLine.first().getElement());
+                    nextLine.remove(nextLine.first());
+                }
+
+                lines.remove(curLine + 1);
+            }
+        }
     }
 
     // ------------------------------------------------------------ bookmarks
 
     /** Index of the bookmark with this name in the bookmarks array, or -1. */
     private int findBookmark(String name) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        for (int i = 0; i < bookmarks.size(); i++) {
+            if (bookmarks.get(i).name.equals(name)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /** Index of the line that holds position p, or -1 if p is in no line (deleted). */
     private int lineOf(Position<Character> p) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        for (int i = 0; i < lines.size(); i++) {
+            PositionalList<Character> line = lines.get(i);
+            for (Position<Character> pos : line) {
+                if (pos == p) {
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
 
     @Override
     public boolean addBookmark(String name) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        name = name.trim();
+        if (name.isEmpty() || line().isEmpty()) {
+            return false;
+        }
+
+        int index = findBookmark(name);
+        if (index != -1) {
+            bookmarks.get(index).pos = left;
+        } else {
+            bookmarks.addLast(new Bookmark(name, left));
+        }
+        return true;
     }
 
     @Override
     public boolean removeBookmark(String name) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        int index = findBookmark(name);
+        if (index != -1) {
+            bookmarks.remove(index);
+            return true;
+        }
+        return false;
     }
 
     @Override
     public boolean goToBookmark(String name) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        int index = findBookmark(name);
+        if (index != -1) {
+            Bookmark bookmark = bookmarks.get(index);
+            int lineIndex = lineOf(bookmark.pos);
+            if (lineIndex != -1) {
+                curLine = lineIndex;
+                left = bookmark.pos;
+                return true;
+            } else {
+                bookmarks.remove(index);
+            }
+        }
+        return false;
     }
 
     @Override
     public String[] bookmarkNames() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        String[] names = new String[bookmarks.size()];
+        for (int i = 0; i < bookmarks.size(); i++) {
+            names[i] = bookmarks.get(i).name;
+        }
+        return names;
     }
 
     @Override
     public int bookmarkLine(String name) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        int index = findBookmark(name);
+        if (index != -1) {
+            Bookmark bookmark = bookmarks.get(index);
+            return lineOf(bookmark.pos);
+        }
+        return -1;
     }
 
     // ------------------------------------------------------------ search and statistics
 
     @Override
     public boolean find(String pattern) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        int startLine = curLine;
+        Position<Character> startPos = left;
+
+        do {
+            PositionalList<Character> currentLine = lines.get(curLine);
+            Position<Character> searchStart = (left == null) ? currentLine.first() : currentLine.after(left);
+
+            while (searchStart != null) {
+                if (matchesAt(currentLine, searchStart, pattern)) {
+                    left = currentLine.before(searchStart);
+                    return true;
+                }
+                searchStart = currentLine.after(searchStart);
+            }
+
+            curLine++;
+            if (curLine >= lines.size()) {
+                curLine = 0;
+            }
+            left = null;
+
+        } while (curLine != startLine || left != startPos);
+
+        return false;
     }
 
     /** True if pattern appears in line starting at position start. */
     private boolean matchesAt(PositionalList<Character> line, Position<Character> start,
                               String pattern) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        Position<Character> current = start;
+        for (int i = 0; i < pattern.length(); i++) {
+            if (current == null || current.getElement() != pattern.charAt(i)) {
+                return false;
+            }
+            current = line.after(current);
+        }
+        return true;
     }
 
     @Override
     public int charCount() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        int count = 0;
+        for (int i = 0; i < lines.size(); i++) {
+            count += lines.get(i).size();
+        }
+        return count;
     }
 
     @Override
     public int wordCount() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        int count = 0;
+        for (int i = 0; i < lines.size(); i++) {
+            PositionalList<Character> line = lines.get(i);
+            boolean inWord = false;
+            for (Character c : line) {
+                if (Character.isWhitespace(c)) {
+                    inWord = false;
+                } else {
+                    if (!inWord) {
+                        count++;
+                        inWord = true;
+                    }
+                }
+            }
+        }
+        return count;
     }
 
     // ------------------------------------------------------------ whole text
 
     @Override
     public String getText() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < lines.size(); i++) {
+            PositionalList<Character> line = lines.get(i);
+            for (Character c : line) {
+                text.append(c);
+            }
+            if (i < lines.size() - 1) {
+                text.append('\n');
+            }
+        }
+        return text.toString();
     }
 
     @Override
     public void setText(String text) {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        lines.clear();
+        lines.addLast(new LinkedPositionalList<>());
+        curLine = 0;
+        left = null;
+        bookmarks.clear();
+
+        String[] splitLines = text.split("\n", -1);
+        for (String line : splitLines) {
+            PositionalList<Character> newLine = new LinkedPositionalList<>();
+            for (char c : line.toCharArray()) {
+                newLine.addLast(c);
+            }
+            lines.addLast(newLine);
+        }
     }
 
     @Override
     public Iterator<Character> iterator() {
-        // TODO
-        throw new UnsupportedOperationException("not implemented yet");
+        return new TextIterator();
     }
 
     /** Walks line by line; returns '\n' when it passes from one line to the next. */
@@ -259,14 +497,31 @@ public class TextEditor implements Editor {
 
         @Override
         public boolean hasNext() {
-            // TODO
-            throw new UnsupportedOperationException("not implemented yet");
+            if (inLine.hasNext()) {
+                return true;
+            } else {
+                for (int i = lineIndex + 1; i < lines.size(); i++) {
+                    if (!lines.get(i).isEmpty()) {
+                        return true;
+                    }
+                }
+                return false;
+            }
         }
 
         @Override
         public Character next() {
-            // TODO
-            throw new UnsupportedOperationException("not implemented yet");
+            if (inLine.hasNext()) {
+                return inLine.next();
+            } else {
+                lineIndex++;
+                if (lineIndex < lines.size()) {
+                    inLine = lines.get(lineIndex).iterator();
+                    return '\n';
+                } else {
+                    throw new NoSuchElementException();
+                }
+            }
         }
     }
 }
