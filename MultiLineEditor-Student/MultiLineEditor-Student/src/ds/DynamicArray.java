@@ -1,7 +1,6 @@
 package ds;
 
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 /**
  * Index-based list on a dynamic array.
@@ -89,7 +88,7 @@ public class DynamicArray<E> implements IndexList<E> {
         data[size - 1] = null;
         size--;
 
-        if (size <= data.length / 4 && data.length > 4) {
+        if (size <= data.length / 4 && data.length > 7) {
             resize(data.length / 2);
         }
         return cellData;
@@ -141,13 +140,10 @@ public class DynamicArray<E> implements IndexList<E> {
 
         @Override
         public void remove() {
-            if (lastReturned == -1)
-                throw new IllegalStateException();
-
-            DynamicArray.this.remove(lastReturned);
-
-            next = lastReturned;
-            lastReturned = -1;
+            if (!canRemove)
+                return;
+            next--;
+            DynamicArray.this.remove(next);
         }
     }
 }
