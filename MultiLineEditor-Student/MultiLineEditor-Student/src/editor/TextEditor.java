@@ -369,28 +369,35 @@ public class TextEditor implements Editor {
 
     @Override
     public boolean find(String pattern) {
+        if (pattern.isEmpty())
+            return false;
+
         int startLine = curLine;
         Position<Character> startPos = left;
 
+        int searchLine = curLine;
+        Position<Character> searchStart =
+                (left == null) ? line().first() : line().after(left);
+
+        boolean first = true;
+
         do {
-            PositionalList<Character> currentLine = lines.get(curLine);
-            Position<Character> searchStart = (left == null) ? currentLine.first() : currentLine.after(left);
+            PositionalList<Character> currentLine = lines.get(searchLine);
 
             while (searchStart != null) {
                 if (matchesAt(currentLine, searchStart, pattern)) {
+                    curLine = searchLine;
                     left = currentLine.before(searchStart);
                     return true;
                 }
+
                 searchStart = currentLine.after(searchStart);
             }
 
-            curLine++;
-            if (curLine >= lines.size()) {
-                curLine = 0;
-            }
-            left = null;
+            searchLine = (searchLine + 1) % lines.size();
+            searchStart = lines.get(searchLine).first();
 
-        } while (curLine != startLine || left != startPos);
+        } while (searchLine != startLine || first);
 
         return false;
     }
@@ -442,33 +449,44 @@ public class TextEditor implements Editor {
     @Override
     public String getText() {
         StringBuilder text = new StringBuilder();
+
         for (int i = 0; i < lines.size(); i++) {
             PositionalList<Character> line = lines.get(i);
+
             for (Character c : line) {
                 text.append(c);
             }
+
             if (i < lines.size() - 1) {
                 text.append('\n');
             }
         }
+
         return text.toString();
     }
 
     @Override
     public void setText(String text) {
-        lines.clear();
-        lines.addLast(new LinkedPositionalList<>());
+        while (!lines.isEmpty()) {
+            lines.remove(lines.size() - 1);
+        }
+
         curLine = 0;
         left = null;
-        bookmarks.clear();
 
-        String[] splitLines = text
-        .split("\n", -1);
+        while (!bookmarks.isEmpty()) {
+            bookmarks.remove(bookmarks.size() - 1);
+        }
+
+        String[] splitLines = text.split("\n", -1);
+
         for (String line : splitLines) {
             PositionalList<Character> newLine = new LinkedPositionalList<>();
+
             for (char c : line.toCharArray()) {
                 newLine.addLast(c);
             }
+
             lines.addLast(newLine);
         }
     }
@@ -480,36 +498,27 @@ public class TextEditor implements Editor {
 
     /** Walks line by line; returns '\n' when it passes from one line to the next. */
     private class TextIterator implements Iterator<Character> {
-        private int lineIndex = 0;                                  // line being read
-        private Iterator<Character> inLine = lines.get(0).iterator(); // walk in that line
+        private int lineIndex = 0;
+        private Iterator<Character> inLine = lines.get(0).iterator();
 
         @Override
         public boolean hasNext() {
-            if (inLine.hasNext()) {
-                return true;
-            } else {
-                for (int i = lineIndex + 1; i < lines.size(); i++) {
-                    if (!lines.get(i).isEmpty()) {
-                        return true;
-                    }
-                }
-                return false;
-            }
+            return inLine.hasNext() || lineIndex < lines.size() - 1;
         }
 
         @Override
         public Character next() {
             if (inLine.hasNext()) {
                 return inLine.next();
-            } else {
-                lineIndex++;
-                if (lineIndex < lines.size()) {
-                    inLine = lines.get(lineIndex).iterator();
-                    return '\n';
-                } else {
-                    throw new NoSuchElementException();
-                }
             }
+
+            if (lineIndex < lines.size() - 1) {
+                lineIndex++;
+                inLine = lines.get(lineIndex).iterator();
+                return '\n';
+            }
+
+            throw new NoSuchElementException();
         }
     }
 }
