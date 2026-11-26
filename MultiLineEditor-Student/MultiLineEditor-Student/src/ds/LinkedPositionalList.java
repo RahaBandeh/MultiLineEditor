@@ -5,8 +5,10 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
- * Positional list on a doubly linked list with two sentinel nodes (header and trailer).
- * Every node knows the list it belongs to (owner). A removed node has owner == null.
+ * Positional list on a doubly linked list with two sentinel nodes (header and
+ * trailer).
+ * Every node knows the list it belongs to (owner). A removed node has owner ==
+ * null.
  */
 public class LinkedPositionalList<E> implements PositionalList<E> {
 
@@ -15,7 +17,7 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         private E element;
         private Node<E> prev;
         private Node<E> next;
-        private LinkedPositionalList<E> owner;   // null after the node is removed
+        private LinkedPositionalList<E> owner; // null after the node is removed
 
         Node(E element, Node<E> prev, Node<E> next, LinkedPositionalList<E> owner) {
             this.element = element;
@@ -33,10 +35,10 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         }
     }
 
-    private final Node<E> header;    // sentinel before the first element
-    private final Node<E> trailer;   // sentinel after the last element
+    private final Node<E> header; // sentinel before the first element
+    private final Node<E> trailer; // sentinel after the last element
     private int size;
-    private int modCount;            // part E: +1 on every add, remove, split and append
+    private int modCount; // part E: +1 on every add, remove, split and append
 
     public LinkedPositionalList() {
         header = new Node<>(null, null, null, this);
@@ -49,10 +51,10 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
 
     /**
      * Returns the node of p if p is a valid position of this list.
+     * 
      * @throws IllegalArgumentException if p was removed, is a sentinel, is null
-     *         or belongs to another list
+     *                                  or belongs to another list
      */
-    @SuppressWarnings("unchecked")
     private Node<E> validate(Position<E> p) {
         if (!(p instanceof Node))
             throw new IllegalArgumentException("this position is invalid!");
@@ -65,10 +67,8 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         if (node.owner != this)
             throw new IllegalArgumentException("this position doesn't belong this list!");
 
-        
-        if (node == header || node == trailer )
+        if (node == header || node == trailer)
             throw new IllegalArgumentException("this position belongs to sentinels!");
-
 
         return node;
     }
@@ -120,7 +120,7 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         Node<E> current = validate(p);
 
         return position(current.prev);
-            
+
     }
 
     @Override
@@ -132,11 +132,10 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
 
     @Override
     public boolean contains(Position<E> p) {
-        try{
+        try {
             validate(p);
             return true;
-        }
-        catch(IllegalArgumentException e){
+        } catch (IllegalArgumentException e) {
 
             return false;
         }
@@ -160,7 +159,7 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
 
     @Override
     public Position<E> addBefore(Position<E> p, E e) {
-     
+
         Node<E> current = validate(p);
         return addBetween(e, current.prev, current);
 
@@ -181,14 +180,14 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         E oldValue = current.element;
         current.element = e;
 
-        return oldValue; 
+        return oldValue;
     }
 
     @Override
     public E remove(Position<E> p) {
         Node<E> current = validate(p);
 
-        current.prev.next  = current.next;
+        current.prev.next = current.next;
         current.next.prev = current.prev;
         current.owner = null;
         current.prev = null;
@@ -210,9 +209,9 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         if (first == trailer) {
             return newList;
         }
-         Node<E> last = trailer.prev;
+        Node<E> last = trailer.prev;
 
-         int count = 0;
+        int count = 0;
         for (Node<E> n = first; n != trailer; n = n.next) {
             n.owner = newList;
             count++;
@@ -234,7 +233,6 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         return newList;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void appendAll(PositionalList<E> other) {
         if (!(other instanceof LinkedPositionalList<?>))
@@ -271,7 +269,7 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
 
     @Override
     public Iterator<E> iterator() {
-         return new ElementIterator();
+        return new ElementIterator();
     }
 
     @Override
@@ -284,10 +282,13 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
         };
     }
 
-    /** Walks the positions from first to last; remove() removes the last one returned. */
+    /**
+     * Walks the positions from first to last; remove() removes the last one
+     * returned.
+     */
     private class PositionIterator implements Iterator<Position<E>> {
-        private Node<E> cursor = header.next;   // node that next() will return
-        private Node<E> recent = null;          // node returned by the last next()
+        private Node<E> cursor = header.next; // node that next() will return
+        private Node<E> recent = null; // node returned by the last next()
         private int expectedModCount = modCount;
 
         /** Part E (optional): fail-fast check. */
@@ -298,7 +299,7 @@ public class LinkedPositionalList<E> implements PositionalList<E> {
 
         @Override
         public boolean hasNext() {
-             return cursor != trailer;
+            return cursor != trailer;
         }
 
         @Override
