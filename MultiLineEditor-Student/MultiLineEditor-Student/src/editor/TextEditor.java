@@ -62,7 +62,7 @@ public class TextEditor implements Editor {
     @Override
     public String lineText(int i) {
         StringBuilder currentLine = new  StringBuilder();
-        for (Character c : lines.get(i)) {
+        for (Character c : lines.get(i)) { //
             currentLine.append(c);
         }
         return currentLine.toString();
@@ -92,7 +92,9 @@ public class TextEditor implements Editor {
         }
 
         return count + 1;
+
     }
+
 
     // ------------------------------------------------------------ moving the cursor
 
@@ -142,7 +144,7 @@ public class TextEditor implements Editor {
     }
 
     @Override
-    public void moveDown() { //
+    public void moveDown() { 
     if (curLine < lines.size() - 1) {
         int column = cursorColumn();
         curLine++;
@@ -152,13 +154,11 @@ public class TextEditor implements Editor {
 
     @Override
     public void moveHome() {
-        curLine = 0;
         left = null;
     }
 
     @Override
     public void moveEnd() {
-        curLine = lines.size() - 1;
         left = lines.get(curLine).last();
     }
 
@@ -176,7 +176,7 @@ public class TextEditor implements Editor {
     }
 
     /** Puts the cursor at column col of this line (at its end if the line is shorter). */
-    private void placeAtColumn(int col) { 
+    private void placeAtColumn(int col) { //col is the number of characters before the cursor
         if (col <= 0) {
             left = null;
             return;
@@ -186,14 +186,14 @@ public class TextEditor implements Editor {
             return;
         }
         Position<Character> current = line().first();
-        int count = 1;
+        int count = 0;
 
         while (count < col) {
             current = line().after(current);
             count++;
         }
 
-        left = line().before(current);
+        left = current;
         
     }
 
@@ -203,10 +203,12 @@ public class TextEditor implements Editor {
     public void insertChar(char c) {
         if (c == '\n') {
             newLine();
-        } else {
+        } 
+        else {
             if (left == null) {
                 left = line().addFirst(c);
-            } else {
+            } 
+            else {
                 left = line().addAfter(left, c);
             }
         }
@@ -214,20 +216,7 @@ public class TextEditor implements Editor {
 
     @Override
     public void newLine() {
-        PositionalList<Character> currentLine = line();
-        PositionalList<Character> newLine = new LinkedPositionalList<>();
-
-        if (left != null) {
-            Position<Character> next = currentLine.after(left);
-            while (next != null) {
-                newLine.addLast(next.getElement());
-                next = currentLine.after(next);
-            }
-
-            while (currentLine.size() > 0 && currentLine.after(left) != null) {
-                currentLine.remove(currentLine.after(left));
-            }
-        }
+        PositionalList<Character> newLine = line().splitAfter(left);
 
         lines.add(curLine + 1, newLine);
         curLine++;
@@ -236,60 +225,38 @@ public class TextEditor implements Editor {
 
     @Override
     public void backspace() {
-        if (left == null) {
-            if (curLine > 0) {
-                PositionalList<Character> currentLine = line();
-                PositionalList<Character> previousLine = lines.get(curLine - 1);
-                Position<Character> lastCharPrevLine = previousLine.last();
+        if(left == null) {
+            if(curLine == 0)
+                return;
 
-                while (!currentLine.isEmpty()) {
-                    previousLine.addLast(currentLine.first().getElement());
-                    currentLine.remove(currentLine.first());
-                }
-
-                lines.remove(curLine);
-                curLine--;
-                left = lastCharPrevLine;
-            }
-        } else {
-            Position<Character> charToRemove = left;
+            Position<Character> willBeLeft = line().last();
+            lines.get(curLine - 1).appendAll(line());
+            lines.remove(curLine);
+            curLine--;
+            left = willBeLeft;
+        }
+        else {
+            Position<Character> deleted = left;
             left = line().before(left);
-            line().remove(charToRemove);
+            line().remove(deleted);
         }
     }
 
     @Override
     public void delete() {
-        if (left == null) {
-            if (!line().isEmpty()) {
-                Position<Character> charToRemove = line().first();
-                line().remove(charToRemove);
-            } else if (curLine < lines.size() - 1) {
-                PositionalList<Character> currentLine = line();
-                PositionalList<Character> nextLine = lines.get(curLine + 1);
+        Position<Character> right =
+                  (left == null) ? line().first() : line().after(left);
 
-                while (!nextLine.isEmpty()) {
-                    currentLine.addLast(nextLine.first().getElement());
-                    nextLine.remove(nextLine.first());
-                }
+        if(right == null) { //end of line
+            if (curLine == lines.size() - 1)
+                return;
 
-                lines.remove(curLine + 1);
+                line().appendAll(lines.get(curLine+1));
+                lines.remove(curLine+1);
             }
-        } else {
-            Position<Character> charToRemove = line().after(left);
-            if (charToRemove != null) {
-                line().remove(charToRemove);
-            } else if (curLine < lines.size() - 1) {
-                PositionalList<Character> currentLine = line();
-                PositionalList<Character> nextLine = lines.get(curLine + 1);
-
-                while (!nextLine.isEmpty()) {
-                    currentLine.addLast(nextLine.first().getElement());
-                    nextLine.remove(nextLine.first());
-                }
-
-                lines.remove(curLine + 1);
-            }
+        
+        else {
+            line().remove(right);
         }
     }
 
@@ -477,7 +444,8 @@ public class TextEditor implements Editor {
         left = null;
         bookmarks.clear();
 
-        String[] splitLines = text.split("\n", -1);
+        String[] splitLines = text
+        .split("\n", -1);
         for (String line : splitLines) {
             PositionalList<Character> newLine = new LinkedPositionalList<>();
             for (char c : line.toCharArray()) {
