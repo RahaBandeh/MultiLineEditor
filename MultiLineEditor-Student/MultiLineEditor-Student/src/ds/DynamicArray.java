@@ -121,39 +121,33 @@ public class DynamicArray<E> implements IndexList<E> {
 
     /** remove() deletes the element returned by the last call to next(). */
     private class ArrayIterator implements Iterator<E> {
-        private int next = 0; // index of the element next() will return
-        private boolean canRemove = false; // true right after next()
+
+        private int next = 0;
+        private int lastReturned = -1;
 
         @Override
         public boolean hasNext() {
-            return next != size() - 1; // checkout TODO
+            return next < size;
         }
 
         @Override
         public E next() {
             if (!hasNext())
-                return null;
-            E value = data[next]; // TODO check
-            next++;
-            canRemove = true;
-            return value;
+                throw new NoSuchElementException();
 
+            lastReturned = next;
+            return data[next++];
         }
 
         @Override
         public void remove() {
-            if (!canRemove)
-                return;
-            next--;
-            DynamicArray.this.remove(next);
+            if (lastReturned == -1)
+                throw new IllegalStateException();
 
-            data[size - 1] = null;
-            size--;
+            DynamicArray.this.remove(lastReturned);
 
-            if (size <= data.length / 4) {
-                resize(data.length / 2);
-            }
-
+            next = lastReturned;
+            lastReturned = -1;
         }
     }
 }

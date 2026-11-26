@@ -86,13 +86,12 @@ public class TextEditor implements Editor {
         int count = 0;
         Position<Character> current = line().first();
 
-        while (current != left) {
+        while (current != null && current != left) {
             count++;
             current = line().after(current);
         }
 
         return count + 1;
-
     }
 
 
@@ -116,18 +115,16 @@ public class TextEditor implements Editor {
         if (left == null) {
             if (!line().isEmpty()) {
                 left = line().first();
-            } 
-            else if (curLine < lines.size() - 1) {
+            } else if (curLine < lines.size() - 1) {
                 curLine++;
                 left = null;
             }
-        } 
-        else {
+        } else {
             Position<Character> next = line().after(left);
+
             if (next != null) {
                 left = next;
-            } 
-            else if (curLine < lines.size() - 1) {
+            } else if (curLine < lines.size() - 1) {
                 curLine++;
                 left = null;
             }
@@ -144,13 +141,13 @@ public class TextEditor implements Editor {
     }
 
     @Override
-    public void moveDown() { 
-    if (curLine < lines.size() - 1) {
-        int column = cursorColumn();
-        curLine++;
-        placeAtColumn(column);
+    public void moveDown() {
+        if (curLine < lines.size() - 1) {
+            int column = cursorColumn();
+            curLine++;
+            placeAtColumn(column);
+        }
     }
-}
 
     @Override
     public void moveHome() {
@@ -176,25 +173,21 @@ public class TextEditor implements Editor {
     }
 
     /** Puts the cursor at column col of this line (at its end if the line is shorter). */
-    private void placeAtColumn(int col) { //col is the number of characters before the cursor
-        if (col <= 0) {
+    private void placeAtColumn(int col) {
+        if (col <= 0 || line().isEmpty()) {
             left = null;
             return;
-        } 
-        if (col > line().size()) {
-            left = line().last();
-            return;
         }
-        Position<Character> current = line().first();
-        int count = 0;
 
-        while (count < col) {
+        Position<Character> current = line().first();
+        int count = 1;
+
+        while (count < col && line().after(current) != null) {
             current = line().after(current);
             count++;
         }
 
         left = current;
-        
     }
 
     // ------------------------------------------------------------ editing
@@ -225,17 +218,21 @@ public class TextEditor implements Editor {
 
     @Override
     public void backspace() {
-        if(left == null) {
-            if(curLine == 0)
+        if (left == null) {
+            if (curLine == 0)
                 return;
 
-            Position<Character> willBeLeft = line().last();
-            lines.get(curLine - 1).appendAll(line());
+            PositionalList<Character> previousLine = lines.get(curLine - 1);
+
+            // Save the character immediately before the joining point.
+            Position<Character> willBeLeft = previousLine.last();
+
+            previousLine.appendAll(line());
             lines.remove(curLine);
+
             curLine--;
             left = willBeLeft;
-        }
-        else {
+        } else {
             Position<Character> deleted = left;
             left = line().before(left);
             line().remove(deleted);
@@ -329,21 +326,19 @@ public class TextEditor implements Editor {
     public boolean goToBookmark(String name) {
         int index = findBookmark(name);
 
-        if (index != -1) {
-            Bookmark bookmark = bookmarks.get(index);
-            int lineIndex = lineOf(bookmark.pos);
+        if (index == -1)
+            return false;
 
-            if (lineIndex != -1) {
-                curLine = lineIndex;
-                left = line().before(bookmark.pos);
-                return true;
-            } 
-            else {
-                bookmarks.remove(index);
-            }
-        }
+        Bookmark bookmark = bookmarks.get(index);
+        int lineIndex = lineOf(bookmark.pos);
 
-        return false;
+        if (lineIndex == -1)
+            return false;
+
+        curLine = lineIndex;
+        left = line().before(bookmark.pos);
+
+        return true;
     }
 
     @Override
@@ -369,35 +364,56 @@ public class TextEditor implements Editor {
 
     @Override
     public boolean find(String pattern) {
-        if (pattern.isEmpty())
+        if (pattern == null || pattern.isEmpty())
             return false;
 
-        int startLine = curLine;
-        Position<Character> startPos = left;
+        int total = charCount();
+
+        if (total <= 1)
+            return false;
 
         int searchLine = curLine;
-        Position<Character> searchStart =
+
+        Position<Character> current =
                 (left == null) ? line().first() : line().after(left);
 
-        boolean first = true;
+        // Skip the character immediately after the cursor.
+        if (current != null) {
+            current = lines.get(searchLine).after(current);
+        } else {
+            searchLine = (searchLine + 1) % lines.size();
+            current = lines.get(searchLine).first();
+        }
 
-        do {
-            PositionalList<Character> currentLine = lines.get(searchLine);
+        // Find the next non-empty line if necessary.
+        while (current == null) {
+            searchLine = (searchLine + 1) % lines.size();
+            current = lines.get(searchLine).first();
+        }
 
-            while (searchStart != null) {
-                if (matchesAt(currentLine, searchStart, pattern)) {
-                    curLine = searchLine;
-                    left = currentLine.before(searchStart);
-                    return true;
-                }
+        // Search each remaining character position at most once.
+        for (int i = 0; i < total - 1; i++) {
+            PositionalList<Character> currentLine =
+                    lines.get(searchLine);
 
-                searchStart = currentLine.after(searchStart);
+            if (matchesAt(currentLine, current, pattern)) {
+                curLine = searchLine;
+                left = currentLine.before(current);
+                return true;
             }
 
-            searchLine = (searchLine + 1) % lines.size();
-            searchStart = lines.get(searchLine).first();
+            current = currentLine.after(current);
 
-        } while (searchLine != startLine || first);
+            if (current == null) {
+                searchLine = (searchLine + 1) % lines.size();
+                current = lines.get(searchLine).first();
+
+                while (current == null) {
+                    searchLine = (searchLine + 1) % lines.size();
+                    current = lines.get(searchLine).first();
+                }
+            }
+        }
 
         return false;
     }
@@ -480,11 +496,14 @@ public class TextEditor implements Editor {
 
         String[] splitLines = text.split("\n", -1);
 
-        for (String line : splitLines) {
-            PositionalList<Character> newLine = new LinkedPositionalList<>();
+        for (String lineText : splitLines) {
+            PositionalList<Character> newLine =
+                    new LinkedPositionalList<>();
 
-            for (char c : line.toCharArray()) {
-                newLine.addLast(c);
+            for (char c : lineText.toCharArray()) {
+                if (c != '\r') {
+                    newLine.addLast(c);
+                }
             }
 
             lines.addLast(newLine);
