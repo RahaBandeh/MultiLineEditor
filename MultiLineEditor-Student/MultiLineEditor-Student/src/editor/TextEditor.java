@@ -245,7 +245,7 @@ public class TextEditor implements Editor {
     @Override
     public void delete() {
         Position<Character> right =
-                  (left == null) ? line().first() : line().after(left);
+                    (left == null) ? line().first() : line().after(left);
 
         if(right == null) { //end of line
             if (curLine == lines.size() - 1)
@@ -276,10 +276,14 @@ public class TextEditor implements Editor {
     private int lineOf(Position<Character> p) {
         for (int i = 0; i < lines.size(); i++) {
             PositionalList<Character> line = lines.get(i);
-            for (Position<Character> pos : line) {
-                if (pos == p) {
+
+            Position<Character> current = line.first();
+
+            while (current != null) {
+                if (current == p)
                     return i;
-                }
+
+                current = line.after(current);
             }
         }
         return -1;
@@ -288,16 +292,26 @@ public class TextEditor implements Editor {
     @Override
     public boolean addBookmark(String name) {
         name = name.trim();
-        if (name.isEmpty() || line().isEmpty()) {
+
+        if (name.isEmpty() || line().isEmpty())
             return false;
-        }
+
+        Position<Character> target;
+
+        if (left == null)
+            target = line().first();
+        else if (line().after(left) == null)
+            target = left;
+        else
+            target = line().after(left);
 
         int index = findBookmark(name);
-        if (index != -1) {
-            bookmarks.get(index).pos = left;
-        } else {
-            bookmarks.addLast(new Bookmark(name, left));
-        }
+
+        if (index != -1)
+            bookmarks.get(index).pos = target;
+        else
+            bookmarks.addLast(new Bookmark(name, target));
+
         return true;
     }
 
@@ -314,17 +328,21 @@ public class TextEditor implements Editor {
     @Override
     public boolean goToBookmark(String name) {
         int index = findBookmark(name);
+
         if (index != -1) {
             Bookmark bookmark = bookmarks.get(index);
             int lineIndex = lineOf(bookmark.pos);
+
             if (lineIndex != -1) {
                 curLine = lineIndex;
-                left = bookmark.pos;
+                left = line().before(bookmark.pos);
                 return true;
-            } else {
+            } 
+            else {
                 bookmarks.remove(index);
             }
         }
+
         return false;
     }
 
